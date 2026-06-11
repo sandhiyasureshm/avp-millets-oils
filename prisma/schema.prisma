@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// 1. Admin Users
+model Admin {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // Hashed password
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// 2. Categories (Oils, Millets, Powders)
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?   @db.Text
+  image       String?
+  sortOrder   Int       @default(0)
+  status      String    @default("Published") // Draft, Published, Archived
+  isDeleted   Boolean   @default(false)
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdBy   String?
+  updatedBy   String?
+}
+
+// 3. Products
+model Product {
+  id              String   @id @default(cuid())
+  name            String
+  slug            String   @unique
+  description     String   @db.Text
+  benefits        Json     // Array of strings, e.g., ["100% Natural", "Cold Pressed"]
+  
+  // Pricing & Weights
+  // Example: [{ "size": "500ml", "price": 250 }, { "size": "1L", "price": 480 }]
+  variants        Json     
+  
+  // Image Structure: { primaryImage: "/path.webp", gallery: ["/path2.webp"] }
+  images          Json     
+  
+  isFeatured      Boolean  @default(false)
+  status          String   @default("Published") // Draft, Published, Out Of Stock, Archived
+  
+  // SEO Fields
+  metaTitle       String?
+  metaDescription String?  @db.Text
+
+  // Inventory Fields
+  stockQuantity   Int      @default(0)
+  sku             String?
+
+  // Soft Delete & Audit
+  isDeleted       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  createdBy       String?
+  updatedBy       String?
+
+  categoryId      String
+  category        Category @relation(fields: [categoryId], references: [id])
+  
+  enquiries       ProductEnquiry[]
+}
+
+// 4. Product Enquiries (Linked to specific product & variant)
+model ProductEnquiry {
+  id          String   @id @default(cuid())
+  name        String
+  phone       String
+  message     String?  @db.Text
+  status      String   @default("NEW") // NEW, IN_PROGRESS, CLOSED
+  
+  variantSize String?  // Which variant they inquired about
+  
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id])
+  
+  createdAt   DateTime @default(now())
+}
+
+// 5. General Customer Inquiries (Contact Form)
+model Inquiry {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String
+  message   String   @db.Text
+  status    String   @default("NEW") // NEW, READ, REPLIED
+  createdAt DateTime @default(now())
+}
+
+// 6. Gallery (Farms, Production, Customer Photos)
+model Gallery {
+  id        String   @id @default(cuid())
+  imagePath String
+  caption   String?
+  category  String   // e.g., 'FARM', 'PRODUCTION', 'PRODUCT'
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+// 7. Homepage Settings (CMS)
+model HomepageSetting {
+  key       String   @id // e.g., 'HERO_HEADLINE', 'WHATSAPP_NUMBER'
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}
